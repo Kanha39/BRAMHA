@@ -44,50 +44,54 @@ export function TopBar() {
   return (
     <header className="bg-[#0d1321] border-b border-[#2a3a4e]">
       {/* Top row */}
-      <div className="flex items-center justify-between px-4 py-2">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between px-4 py-2 gap-3 md:gap-0">
         {/* Logo + Scenario */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-cyan-400" style={{ boxShadow: '0 0 8px #06b6d4' }} />
+        <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
+          <div className="flex items-center gap-2 whitespace-nowrap">
+            <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" style={{ boxShadow: '0 0 8px #06b6d4' }} />
             <span className="text-sm font-bold tracking-wider text-cyan-400">POLAR RESILIENCE</span>
           </div>
-          <span className="text-xs text-slate-500">|</span>
-          <span className="text-xs text-slate-400 uppercase tracking-wide">{scenario.name}</span>
+          <span className="hidden sm:inline text-xs text-slate-500">|</span>
+          <span className="text-[10px] sm:text-xs text-slate-400 uppercase tracking-wide bg-[#1a2332] px-2 py-0.5 rounded border border-[#2a3a4e]">
+            {scenario.name}
+          </span>
           {demo.running && (
-            <span className="text-xs bg-cyan-500/20 text-cyan-400 px-2 py-0.5 rounded border border-cyan-500/30">
+            <span className="text-[10px] sm:text-xs bg-cyan-500/20 text-cyan-400 px-2 py-0.5 rounded border border-cyan-500/30">
               DEMO: {demo.currentPhase}
             </span>
           )}
         </div>
 
         {/* Status indicators */}
-        <div className="flex items-center gap-5">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-5 w-full md:w-auto">
           {/* Link Status */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 bg-[#1a2332] px-2 py-1 rounded border border-[#2a3a4e]">
             <div className={`w-2 h-2 rounded-full ${linkStateColors[linkState]}`}
               style={{ boxShadow: `0 0 6px ${linkState === LinkState.ONLINE ? '#22c55e' : linkState === LinkState.DEGRADED ? '#f59e0b' : '#ef4444'}80` }} />
-            <span className="text-xs text-slate-400 uppercase">{linkStateLabels[linkState]}</span>
+            <span className="text-[10px] sm:text-xs text-slate-400 uppercase font-semibold">{linkStateLabels[linkState]}</span>
           </div>
 
           {/* Comm Mode */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 hidden sm:flex">
             <span className="text-[10px] text-slate-500 uppercase">Mode:</span>
             <span className="text-xs text-slate-300 font-medium">{commMode.replace('_', ' ')}</span>
           </div>
 
           {/* Byte Budget */}
-          <div className="flex items-center gap-2 min-w-[140px]">
-            <span className="text-[10px] text-slate-500 uppercase">Budget:</span>
+          <div className="flex items-center gap-2 flex-1 md:min-w-[140px] md:flex-none">
+            <span className="text-[10px] text-slate-500 uppercase hidden sm:inline">Budget:</span>
             <div className="flex-1">
-              <div className="budget-meter">
+              <div className="budget-meter h-1.5 bg-[#1a2332]">
                 <div className={`budget-meter-fill ${budgetColor}`} style={{ width: `${budgetPct}%` }} />
               </div>
             </div>
-            <span className="text-[10px] text-slate-400">{formatBytes(bytesUsed)}/{formatBytes(byteBudget)}</span>
+            <span className="text-[10px] text-slate-400 font-[tabular-nums] whitespace-nowrap">
+              {formatBytes(bytesUsed)}/{formatBytes(byteBudget)}
+            </span>
           </div>
 
           {/* Role Switcher */}
-          <div className="flex items-center gap-1 bg-[#1a2332] rounded border border-[#2a3a4e]">
+          <div className="flex items-center gap-1 bg-[#1a2332] rounded border border-[#2a3a4e] p-0.5">
             <button
               onClick={() => setRole(UserRole.HQ_COMMAND)}
               className={`px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide rounded transition-colors ${
