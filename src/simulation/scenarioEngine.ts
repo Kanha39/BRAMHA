@@ -1,8 +1,11 @@
 import { ScenarioType, LinkState, EquipmentStatus, WeatherCondition } from '../types';
 import { useSimulationStore } from '../store/simulationStore';
 import { useCommunicationStore } from '../store/communicationStore';
+import { useUIStore } from '../store/uiStore';
 import { generateId } from '../utils/helpers';
 import { resetSimulationRNG } from './stationSimulator';
+import { resetCommunicationEngine } from '../communication/commEngine';
+import { cancelRegisteredDemo } from './demoLifecycle';
 
 export function activateScenario(type: ScenarioType) {
   const simStore = useSimulationStore.getState();
@@ -14,7 +17,7 @@ export function activateScenario(type: ScenarioType) {
 
   const scenarios: Record<ScenarioType, { name: string; description: string }> = {
     [ScenarioType.NORMAL]: { name: 'Normal Operations', description: 'Station operating under normal conditions.' },
-    [ScenarioType.BLIZZARD]: { name: 'Blizzard', description: 'Severe blizzard conditions approaching the station.' },
+    [ScenarioType.BLIZZARD]: { name: 'Blizzard', description: 'Severe blizzard conditions approaching the station; communication degradation is controlled separately.' },
     [ScenarioType.GENERATOR_FAILURE]: { name: 'Generator Failure', description: 'Generator 2 experiencing critical failure.' },
     [ScenarioType.COMM_OUTAGE]: { name: 'Communication Outage', description: 'Communication link lost with headquarters.' },
   };
@@ -25,6 +28,7 @@ export function activateScenario(type: ScenarioType) {
     startedAt: now,
     active: true,
   });
+  simStore.setRunning(true);
 
   simStore.addAuditEvent({
     id: generateId(),
@@ -70,10 +74,13 @@ export function activateScenario(type: ScenarioType) {
 }
 
 export function resetScenario() {
+  cancelRegisteredDemo();
   const simStore = useSimulationStore.getState();
   const commStore = useCommunicationStore.getState();
   
   simStore.resetSimulation();
   commStore.resetComm();
+  useUIStore.getState().setDemo({ running: false, step: 0, currentPhase: 'Idle', error: undefined });
   resetSimulationRNG(42);
+  resetCommunicationEngine(2026);
 }

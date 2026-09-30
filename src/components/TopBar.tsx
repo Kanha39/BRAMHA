@@ -1,15 +1,19 @@
+import { useState } from 'react';
 import { useCommunicationStore } from '../store/communicationStore';
 import { useSimulationStore } from '../store/simulationStore';
 import { useUIStore, type Tab } from '../store/uiStore';
-import { LinkState, CommMode, UserRole } from '../types';
+import { LinkState, UserRole } from '../types';
 import { formatBytes } from '../utils/helpers';
 
-const TABS: { id: Tab; label: string }[] = [
+const PRIMARY_TABS: { id: Tab; label: string }[] = [
   { id: 'command-center', label: 'Command Center' },
-  { id: 'station', label: 'Station' },
-  { id: 'link', label: 'Link Simulator' },
   { id: 'scenarios', label: 'Scenarios' },
+  { id: 'link', label: 'Link Simulator' },
   { id: 'decisions', label: 'Decisions' },
+];
+
+const MORE_TABS: { id: Tab; label: string }[] = [
+  { id: 'station', label: 'Station View' },
   { id: 'commands', label: 'Commands' },
   { id: 'inventory', label: 'Inventory' },
 ];
@@ -27,6 +31,7 @@ const linkStateLabels: Record<LinkState, string> = {
 };
 
 export function TopBar() {
+  const [moreOpen, setMoreOpen] = useState(false);
   const activeTab = useUIStore((s) => s.activeTab);
   const setActiveTab = useUIStore((s) => s.setActiveTab);
   const role = useUIStore((s) => s.role);
@@ -49,7 +54,7 @@ export function TopBar() {
         <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
           <div className="flex items-center gap-2 whitespace-nowrap">
             <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" style={{ boxShadow: '0 0 8px #06b6d4' }} />
-            <span className="text-sm font-bold tracking-wider text-cyan-400">POLAR RESILIENCE</span>
+            <span className="text-sm font-bold tracking-wider text-cyan-400">BRAMHA</span>
           </div>
           <span className="hidden sm:inline text-xs text-slate-500">|</span>
           <span className="text-[10px] sm:text-xs text-slate-400 uppercase tracking-wide bg-[#1a2332] px-2 py-0.5 rounded border border-[#2a3a4e]">
@@ -118,15 +123,49 @@ export function TopBar() {
 
       {/* Tab bar */}
       <div className="flex items-center px-4 gap-1 overflow-x-auto">
-        {TABS.map((tab) => (
+        {PRIMARY_TABS.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => {
+              setActiveTab(tab.id);
+              setMoreOpen(false);
+            }}
             className={`tab ${activeTab === tab.id ? 'tab-active' : ''}`}
           >
             {tab.label}
           </button>
         ))}
+        <div className="relative">
+          <button
+            onClick={() => setMoreOpen((open) => !open)}
+            className={`tab ${MORE_TABS.some((tab) => tab.id === activeTab) ? 'tab-active' : ''}`}
+            aria-expanded={moreOpen}
+            aria-haspopup="menu"
+          >
+            More <span className="ml-1 text-[10px]">{moreOpen ? '▴' : '▾'}</span>
+          </button>
+          {moreOpen && (
+            <div className="absolute left-0 top-full z-20 mt-1 min-w-40 rounded border border-[#2a3a4e] bg-[#111827] p-1 shadow-xl">
+              {MORE_TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    setMoreOpen(false);
+                  }}
+                  className={`block w-full rounded px-3 py-2 text-left text-xs uppercase tracking-wide transition-colors ${
+                    activeTab === tab.id
+                      ? 'bg-cyan-500/15 text-cyan-400'
+                      : 'text-slate-400 hover:bg-[#1a2332] hover:text-slate-200'
+                  }`}
+                  role="menuitem"
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

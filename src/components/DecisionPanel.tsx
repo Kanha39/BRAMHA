@@ -1,6 +1,5 @@
 import { useSimulationStore } from '../store/simulationStore';
 import { AlertLevel } from '../types';
-import { alertLevelBg, alertLevelColor } from '../utils/helpers';
 
 export function DecisionPanel() {
   const recommendations = useSimulationStore((s) => s.recommendations);

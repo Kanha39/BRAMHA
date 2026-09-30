@@ -1,7 +1,7 @@
 import { useCommunicationStore } from '../store/communicationStore';
 import { LinkState, CommMode, Priority } from '../types';
 import { formatBytes } from '../utils/helpers';
-import { calculateBytesSaved } from '../communication/commEngine';
+import { calculateBytesSaved, getTransportProfile } from '../communication/commEngine';
 
 const modeDescriptions: Record<CommMode, string> = {
   [CommMode.FULL]: 'All telemetry transmitted',
@@ -17,6 +17,7 @@ export function LinkSimulator() {
   const setBandwidth = useCommunicationStore((s) => s.setBandwidth);
 
   const { saved, percentage } = calculateBytesSaved();
+  const transport = getTransportProfile(comm.linkState);
   const budgetPct = Math.min((comm.bytesUsedToday / comm.dailyByteBudget) * 100, 100);
   const budgetColor = budgetPct > 80 ? 'bg-red-500' : budgetPct > 50 ? 'bg-amber-500' : 'bg-cyan-500';
 
@@ -116,21 +117,55 @@ export function LinkSimulator() {
           <div className="card">
             <div className="card-header">Byte Accounting</div>
             <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2 border-b border-[#2a3a4e] pb-3 sm:grid-cols-4">
+                <div>
+                  <div className="text-[10px] uppercase text-slate-500">Link state</div>
+                  <div className={`text-xs font-semibold ${comm.linkState === LinkState.ONLINE ? 'text-emerald-400' : comm.linkState === LinkState.DEGRADED ? 'text-amber-400' : 'text-red-400'}`}>{comm.linkState}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase text-slate-500">Latency</div>
+                  <div className="text-xs font-semibold text-cyan-400">{transport.latencyMs === 0 ? 'No delivery' : `${(transport.latencyMs / 1000).toFixed(1)}s`}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase text-slate-500">Packet loss</div>
+                  <div className="text-xs font-semibold text-amber-400">{Math.round(transport.packetLossRate * 100)}%</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase text-slate-500">Sync state</div>
+                  <div className={`text-xs font-semibold ${comm.syncState === 'SYNCED' ? 'text-emerald-400' : comm.syncState === 'SYNCING' ? 'text-cyan-400' : comm.syncState === 'STALE' ? 'text-amber-400' : 'text-red-400'}`}>{comm.syncState}</div>
+                </div>
+              </div>
               <div className="flex justify-between text-xs">
-                <span className="text-slate-400">Bytes Sent</span>
-                <span className="text-green-400 font-semibold font-[tabular-nums]">{formatBytes(comm.bytesSent)}</span>
+                <span className="text-slate-400">Bytes Attempted</span>
+                <span className="text-green-400 font-semibold font-[tabular-nums]">{formatBytes(comm.bytesAttempted)}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-400">Bytes Delivered</span>
+                <span className="text-emerald-400 font-semibold font-[tabular-nums]">{formatBytes(comm.bytesDelivered)}</span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-slate-400">Bytes Queued</span>
                 <span className="text-amber-400 font-semibold font-[tabular-nums]">{formatBytes(comm.bytesQueued)}</span>
               </div>
               <div className="flex justify-between text-xs">
+                <span className="text-slate-400">Packets In Flight</span>
+                <span className="text-cyan-400 font-semibold font-[tabular-nums]">{comm.inFlight.length}</span>
+              </div>
+              <div className="flex justify-between text-xs">
                 <span className="text-slate-400">Bytes Dropped</span>
                 <span className="text-red-400 font-semibold font-[tabular-nums]">{formatBytes(comm.bytesDropped)}</span>
               </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-400">Queue pressure drops</span>
+                <span className="text-red-400 font-semibold font-[tabular-nums]">{comm.queuePressureDrops} packets</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-400">Compacted telemetry</span>
+                <span className="text-amber-400 font-semibold font-[tabular-nums]">{comm.queueCompactions} packets</span>
+              </div>
               <div className="border-t border-[#2a3a4e] pt-2">
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="text-slate-400">Daily Budget Used</span>
+                  <span className="text-slate-400">Daily Attempt Budget Used</span>
                   <span className="text-slate-300">{budgetPct.toFixed(1)}%</span>
                 </div>
                 <div className="budget-meter h-2">
@@ -146,7 +181,7 @@ export function LinkSimulator() {
 
           {/* Transmission Queue */}
           <div className="card">
-            <div className="card-header">Transmission Queue ({comm.queue.length} packets)</div>
+            <div className="card-header">Transmission Queue ({comm.queue.length} queued / {comm.inFlight.length} in flight)</div>
             <div className="max-h-48 overflow-y-auto space-y-1">
               {comm.queue.length === 0 ? (
                 <p className="text-xs text-slate-500 text-center py-4">Queue empty</p>

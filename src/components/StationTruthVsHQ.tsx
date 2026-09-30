@@ -132,7 +132,7 @@ export function StationTruthVsHQ() {
                   {row.hqValue}
                 </span>
                 <span className={`text-[10px] ${freshnessColor(row.hqFreshness)}`}>
-                  {formatAge(row.hqAge)}
+                  {formatAge(row.hqAge)} · {row.hqFreshness}
                 </span>
               </div>
             </div>

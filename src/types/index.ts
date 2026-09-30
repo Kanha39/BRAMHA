@@ -175,6 +175,13 @@ export interface HQState {
   supplies: Record<string, HQMetric>;
   daysOfAutonomy: HQMetric;
   overallStaleness: number; // average age in ms
+  batteryHistory: HQBatteryObservation[];
+}
+
+/** A battery observation that was delivered to HQ, never a station-side sample. */
+export interface HQBatteryObservation {
+  timestamp: number;
+  value: number;
 }
 
 // === COMMUNICATION ===
@@ -182,9 +189,16 @@ export interface HQState {
 export interface TransmissionPacket {
   id: string;
   telemetry: TelemetryPoint;
+  kind?: 'telemetry' | 'command' | 'acknowledgement' | 'brief';
+  direction?: 'station-to-hq' | 'hq-to-station';
+  commandId?: string;
+  commandAcknowledgement?: CommandAcknowledgement;
   status: 'queued' | 'transmitting' | 'sent' | 'dropped';
   createdAt: number;
   sentAt?: number;
+  deliveredAt?: number;
+  deliveryAt?: number;
+  dropReason?: string;
 }
 
 export interface CommunicationState {
@@ -193,12 +207,20 @@ export interface CommunicationState {
   bandwidth: number; // bytes/sec
   maxBandwidth: number;
   dailyByteBudget: number;
-  bytesUsedToday: number;
-  bytesSent: number;
+  bytesUsedToday: number; // transmission attempts counted against the simulated daily budget
+  bytesAttempted: number;
+  bytesDelivered: number;
   bytesQueued: number;
   bytesDropped: number;
+  queuePressureDrops: number;
+  queueCompactions: number;
   queue: TransmissionPacket[];
+  inFlight: TransmissionPacket[];
+  deliveredPackets: TransmissionPacket[];
   transmissionLog: TransmissionPacket[];
+  latencyMs: number;
+  packetLossRate: number;
+  syncState: 'SYNCED' | 'SYNCING' | 'STALE' | 'BLOCKED';
 }
 
 // === ALERTS ===
@@ -226,7 +248,17 @@ export interface Command {
   sentAt?: number;
   receivedAt?: number;
   resolvedAt?: number;
+  acknowledgedAt?: number;
+  acknowledgedDecision?: CommandDecision;
   resolvedBy?: string;
+}
+
+export type CommandDecision = 'APPROVED' | 'VETOED';
+
+export interface CommandAcknowledgement {
+  commandId: string;
+  decision: CommandDecision;
+  timestamp: number;
 }
 
 // === DECISION SUPPORT ===
@@ -256,6 +288,9 @@ export interface ForecastPoint {
 
 export interface Forecast {
   metric: string;
+  generatedAt: number;
+  horizonMinutes: number;
+  dataAgeSeconds: number;
   points: ForecastPoint[];
   overallConfidence: number;
 }
@@ -300,6 +335,7 @@ export interface DemoState {
   step: number;
   totalSteps: number;
   currentPhase: string;
+  error?: string;
   startedAt?: number;
   paused: boolean;
 }

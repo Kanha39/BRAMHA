@@ -16,7 +16,7 @@ const scenarioConfigs = [
   {
     type: ScenarioType.BLIZZARD,
     name: 'Blizzard',
-    description: 'Severe Antarctic blizzard. Wind increases, temperature drops, power demand surges, communication degrades.',
+    description: 'Severe Antarctic blizzard. Wind increases, temperature drops and power demand surges. Communication degradation is controlled separately in Link Simulator and the Guided Demo.',
     icon: '🌨',
     color: 'border-blue-500/30 hover:border-blue-500/50',
     activeColor: 'border-blue-500 bg-blue-500/10',
@@ -72,11 +72,11 @@ export function ScenariosPage() {
           >
             ↻ RESET
           </button>
-          {demo.running && (
+          {(demo.running || demo.error) && (
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-                <span className="text-xs text-cyan-400">{demo.currentPhase}</span>
+                <div className={`w-2 h-2 rounded-full ${demo.error ? 'bg-red-400' : 'bg-cyan-400 animate-pulse'}`} />
+                <span className={`text-xs ${demo.error ? 'text-red-400' : 'text-cyan-400'}`}>{demo.error ?? demo.currentPhase}</span>
               </div>
               <div className="w-32 budget-meter">
                 <div

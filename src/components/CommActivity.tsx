@@ -1,9 +1,8 @@
 import { useCommunicationStore } from '../store/communicationStore';
-import { formatTimeShort, formatBytes } from '../utils/helpers';
+import { formatTimeShort } from '../utils/helpers';
 
 export function CommActivity() {
   const transmissionLog = useCommunicationStore((s) => s.comm.transmissionLog);
-  const linkState = useCommunicationStore((s) => s.comm.linkState);
 
   return (
     <div className="card">
@@ -21,13 +20,16 @@ export function CommActivity() {
                 }`}>
                   {packet.status === 'sent' ? '✓' : packet.status === 'dropped' ? '✗' : '…'}
                 </span>
-                <span className="text-xs text-slate-400 truncate max-w-[160px]">{packet.telemetry.type}</span>
+                <span className="text-xs text-slate-400 truncate max-w-[160px]" title={packet.dropReason}>
+                  {packet.kind === 'command' ? 'HQ command' : packet.kind === 'acknowledgement' ? `Command ACK · ${packet.commandAcknowledgement?.decision ?? 'OUTCOME MISSING'}` : packet.telemetry.type}
+                  {packet.dropReason ? ` · ${packet.dropReason}` : ''}
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] text-slate-500 font-[tabular-nums]">{packet.telemetry.byteSize}B</span>
-                {packet.sentAt && (
-                  <span className="text-[10px] text-slate-600 font-[tabular-nums]">{formatTimeShort(packet.sentAt)}</span>
-                )}
+                <span className="text-[10px] text-slate-600 font-[tabular-nums]">
+                  {packet.status === 'transmitting' ? 'IN FLIGHT' : packet.sentAt ? formatTimeShort(packet.sentAt) : 'QUEUED'}
+                </span>
               </div>
             </div>
           ))

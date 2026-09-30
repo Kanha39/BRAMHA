@@ -4,10 +4,6 @@ import {
   WeatherCondition,
   EquipmentStatus,
   AlertLevel,
-  Priority,
-  type Alert,
-  type AuditEvent,
-  type DecisionRecommendation,
 } from '../types';
 import { useSimulationStore } from '../store/simulationStore';
 import { clamp, generateId, calculateAutonomy } from '../utils/helpers';
@@ -24,7 +20,7 @@ export function resetSimulationRNG(seed: number = 42) {
 
 export function tickStation() {
   const store = getStore();
-  const { station, scenario, tick } = store;
+  const { station, scenario } = store;
 
   // Base drift
   let tempDrift = rng.gaussian(0, 0.3);
@@ -235,4 +231,15 @@ export function applyLoadReduction() {
   
   addAudit('Non-essential load reduction applied', 'station');
   addAlertIfNeeded('Load Reduced', 'Non-essential systems powered down per HQ command.', AlertLevel.GREEN, 'system');
+}
+
+export function applyFuelConservation() {
+  const store = getStore();
+  const { station } = store;
+  store.setEnergy({ powerLoad: Math.round(station.energy.powerLoad * 0.9 * 10) / 10 });
+  store.setFuel({ consumptionRate: Math.round(station.fuel.consumptionRate * 0.7 * 10) / 10 });
+  store.updateModuleStatus('storage', EquipmentStatus.OFFLINE);
+  store.updateEquipment('snowmelter', { status: EquipmentStatus.OFFLINE, load: 0 });
+  addAudit('Emergency fuel conservation applied', 'station');
+  addAlertIfNeeded('Fuel Conservation Active', 'Fuel burn and non-essential load reduced per HQ command.', AlertLevel.AMBER, 'system');
 }

@@ -1,5 +1,5 @@
 import { useSimulationStore } from '../store/simulationStore';
-import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, Area, AreaChart } from 'recharts';
+import { XAxis, YAxis, ResponsiveContainer, Tooltip, Area, AreaChart } from 'recharts';
 
 function formatChartTime(ts: number) {
   const d = new Date(ts);
@@ -73,6 +73,18 @@ function MiniChart({ title, data, color, unit, domain }: MiniChartProps) {
 
 export function TelemetryCharts() {
   const history = useSimulationStore((s) => s.history);
+  const hasTelemetry = history.temperature.length > 0;
+
+  if (!hasTelemetry) {
+    return (
+      <div className="card">
+        <div className="card-header">Telemetry Timeline</div>
+        <div className="flex min-h-28 items-center justify-center text-center text-xs text-slate-500">
+          Charts will appear here after the simulation starts.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">

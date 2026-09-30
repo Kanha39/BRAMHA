@@ -17,7 +17,6 @@ import {
   ScenarioType,
   WeatherCondition,
   EquipmentStatus,
-  AlertLevel,
 } from '../types';
 
 interface SimulationStore {
@@ -137,7 +136,7 @@ function createInitialStation(): StationState {
   };
 }
 
-export const useSimulationStore = create<SimulationStore>((set, get) => ({
+export const useSimulationStore = create<SimulationStore>((set) => ({
   station: createInitialStation(),
   scenario: { type: ScenarioType.NORMAL, name: 'Normal Operations', description: 'Station operating under normal conditions.', active: true },
   alerts: [],

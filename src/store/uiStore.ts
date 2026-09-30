@@ -27,6 +27,7 @@ export const useUIStore = create<UIStore>((set) => ({
     step: 0,
     totalSteps: 16,
     currentPhase: 'Idle',
+    error: undefined,
     paused: false,
   },
   sidebarOpen: false,
@@ -39,7 +40,7 @@ export const useUIStore = create<UIStore>((set) => ({
   resetUI: () => set({
     activeTab: 'command-center',
     selectedModule: null,
-    demo: { running: false, step: 0, totalSteps: 16, currentPhase: 'Idle', paused: false },
+    demo: { running: false, step: 0, totalSteps: 16, currentPhase: 'Idle', error: undefined, paused: false },
   }),
 }));
 

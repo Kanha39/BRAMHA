@@ -1,17 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useCommunicationStore } from '../store/communicationStore';
 import { useSimulationStore } from '../store/simulationStore';
 import { useUIStore } from '../store/uiStore';
 import { CommandStatus, Priority, UserRole, type StationBrief } from '../types';
 import { generateId, formatTimeShort, priorityColor } from '../utils/helpers';
-import { applyLoadReduction } from '../simulation/stationSimulator';
+import { applyFuelConservation, applyLoadReduction } from '../simulation/stationSimulator';
 import { estimateByteSize } from '../utils/helpers';
+import { enqueueCommand, enqueueCommandAcknowledgement } from '../communication/commEngine';
 
 const commandTemplates = [
   { type: 'REDUCE_NONESSENTIAL_LOAD', description: 'Reduce non-essential load to extend station autonomy' },
-  { type: 'ACTIVATE_BACKUP_COMMS', description: 'Switch to backup communication array' },
   { type: 'EMERGENCY_FUEL_CONSERVATION', description: 'Enter emergency fuel conservation mode' },
-  { type: 'SHELTER_IN_PLACE', description: 'All personnel shelter in living quarters' },
 ];
 
 const statusColors: Record<CommandStatus, string> = {
@@ -24,6 +23,7 @@ const statusColors: Record<CommandStatus, string> = {
 };
 
 export function CommandsPage() {
+  const [now, setNow] = useState(0);
   const role = useUIStore((s) => s.role);
   const commands = useCommunicationStore((s) => s.commands);
   const briefs = useCommunicationStore((s) => s.briefs);
@@ -41,6 +41,12 @@ export function CommandsPage() {
   const [briefImpact, setBriefImpact] = useState('');
   const [briefAction, setBriefAction] = useState('');
 
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1_000);
+    return () => clearInterval(timer);
+  }, []);
+  const displayedNow = now || commands[0]?.createdAt || 0;
+
   const handleCreateCommand = () => {
     const template = commandTemplates[selectedTemplate];
     const cmd = {
@@ -48,28 +54,34 @@ export function CommandsPage() {
       type: template.type,
       description: template.description,
       priority: Priority.HIGH,
-      status: CommandStatus.SENT,
+      status: CommandStatus.PENDING,
       createdAt: Date.now(),
       expiresAt: Date.now() + 300000, // 5 min expiry
-      sentAt: Date.now(),
     };
     createCommand(cmd);
+    enqueueCommand(cmd);
     addAuditEvent({ id: generateId(), timestamp: Date.now(), event: `HQ command created: ${template.type}`, source: 'hq' });
   };
 
   const handleApprove = (id: string) => {
     updateCommandStatus(id, CommandStatus.APPROVED);
-    addAuditEvent({ id: generateId(), timestamp: Date.now(), event: 'Station leader approved command', source: 'station' });
+    const resolvedAt = useCommunicationStore.getState().commands.find((command) => command.id === id)?.resolvedAt ?? 0;
+    addAuditEvent({ id: generateId(), timestamp: resolvedAt, event: 'Station leader approved command', source: 'station' });
     // Apply effect
     const cmd = commands.find((c) => c.id === id);
     if (cmd?.type === 'REDUCE_NONESSENTIAL_LOAD') {
       applyLoadReduction();
+    } else if (cmd?.type === 'EMERGENCY_FUEL_CONSERVATION') {
+      applyFuelConservation();
     }
+    enqueueCommandAcknowledgement(id, 'APPROVED');
   };
 
   const handleVeto = (id: string) => {
     updateCommandStatus(id, CommandStatus.VETOED);
-    addAuditEvent({ id: generateId(), timestamp: Date.now(), event: 'Station leader vetoed command', source: 'station' });
+    const resolvedAt = useCommunicationStore.getState().commands.find((command) => command.id === id)?.resolvedAt ?? 0;
+    addAuditEvent({ id: generateId(), timestamp: resolvedAt, event: 'Station leader vetoed command', source: 'station' });
+    enqueueCommandAcknowledgement(id, 'VETOED');
   };
 
   const handleSendBrief = () => {
@@ -89,6 +101,8 @@ export function CommandsPage() {
     // Add to comm queue
     addToQueue({
       id: generateId(),
+      kind: 'brief',
+      direction: 'station-to-hq',
       telemetry: {
         type: 'STATION_BRIEF',
         value: brief.id,
@@ -160,14 +174,14 @@ export function CommandsPage() {
               <p className="text-xs text-slate-500 text-center py-4">No commands issued</p>
             ) : (
               commands.map((cmd) => {
-                const isExpired = cmd.status !== CommandStatus.APPROVED && cmd.status !== CommandStatus.VETOED && Date.now() > cmd.expiresAt;
-                const expiresIn = Math.max(0, Math.floor((cmd.expiresAt - Date.now()) / 1000));
+                const isExpired = cmd.status !== CommandStatus.APPROVED && cmd.status !== CommandStatus.VETOED && displayedNow > cmd.expiresAt;
+                const expiresIn = Math.max(0, Math.floor((cmd.expiresAt - displayedNow) / 1000));
 
                 return (
                   <div key={cmd.id} className="bg-[#0d1321] border border-[#2a3a4e] rounded p-3">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold text-slate-200">
+                      <span className="text-xs font-semibold text-slate-200">
                           {cmd.type.replace(/_/g, ' ')}
                         </span>
                         <span className={`text-[10px] font-semibold ${priorityColor(cmd.priority)}`}>
@@ -178,6 +192,9 @@ export function CommandsPage() {
                         {isExpired ? 'EXPIRED' : cmd.status}
                       </span>
                     </div>
+                    {cmd.acknowledgedDecision && (
+                      <p className="mb-2 text-[10px] text-cyan-400">ACK received: {cmd.acknowledgedDecision}</p>
+                    )}
                     <p className="text-xs text-slate-400 mb-2">{cmd.description}</p>
                     <div className="flex items-center justify-between text-[10px] text-slate-500">
                       <span>ID: {cmd.id}</span>
@@ -186,6 +203,11 @@ export function CommandsPage() {
                         <span>Expires in: {expiresIn}s</span>
                       )}
                     </div>
+                    {cmd.acknowledgedAt && (
+                      <div className="mt-2 text-[10px] font-semibold uppercase tracking-wide text-green-400">
+                        HQ acknowledgement received · {formatTimeShort(cmd.acknowledgedAt)}
+                      </div>
+                    )}
                     {/* Station Leader: Approve/Veto buttons */}
                     {role === UserRole.STATION_LEADER &&
                       (cmd.status === CommandStatus.SENT || cmd.status === CommandStatus.RECEIVED) &&

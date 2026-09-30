@@ -11,8 +11,8 @@ export function DecisionsPage() {
   const acknowledgeAlert = useSimulationStore((s) => s.acknowledgeAlert);
 
   const staleness = hq.overallStaleness;
-  const stalenessMin = Math.floor(staleness / 60000);
-  const forecastConfidence = Math.max(10, 100 - stalenessMin * 15);
+  const stalenessSeconds = Math.floor(staleness / 1000);
+  const forecastConfidence = Math.max(10, 100 - Math.floor(stalenessSeconds / 5) * 15);
 
   return (
     <div className="p-4 space-y-4">
@@ -26,10 +26,10 @@ export function DecisionsPage() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs text-slate-400">HQ Data Staleness</span>
-              <span className={`text-sm font-semibold ${
-                stalenessMin < 2 ? 'text-green-400' : stalenessMin < 5 ? 'text-amber-400' : 'text-red-400'
+                <span className={`text-sm font-semibold ${
+                stalenessSeconds < 5 ? 'text-green-400' : stalenessSeconds < 15 ? 'text-amber-400' : 'text-red-400'
               }`}>
-                {stalenessMin < 1 ? '<1 min' : `${stalenessMin} min`}
+                {stalenessSeconds < 5 ? '<5s' : `${stalenessSeconds}s`}
               </span>
             </div>
             <div className="flex items-center justify-between">
